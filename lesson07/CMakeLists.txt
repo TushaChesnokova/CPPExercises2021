@@ -10,6 +10,8 @@ find_package(OpenCV 4.5.1 REQUIRED)
 # 5) После нажатия OK обратите внимание что внизу в CMake окошке появились строки успеха включая что-то вроде "Found OpenCV: C:/.../opencv/build"
 
 set(SOURCES
+        ../lesson05/src/sobel.h
+        ../lesson05/src/sobel.cpp
         src/hough.cpp
         src/hough.h)
 
