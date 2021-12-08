@@ -5,6 +5,7 @@
 #include <opencv2/imgproc.hpp>
 
 #define _USE_MATH_DEFINES
+
 #include <math.h>
 
 
@@ -17,7 +18,7 @@ HoG buildHoG(cv::Mat grad_x, cv::Mat grad_y) {
     int height = grad_x.rows;
     int width = grad_x.cols;
 
-    HoG hog;
+    HoG hog(NBINS, 0);
 
     // TODO
     // 1) увеличьте размер вектора hog до NBINS (ведь внутри это просто обычный вектор вещественных чисел)
@@ -34,12 +35,16 @@ HoG buildHoG(cv::Mat grad_x, cv::Mat grad_y) {
             float dy = grad_y.at<float>(j, i);
             float strength = sqrt(dx * dx + dy * dy);
 
-            if (strength < 10) // пропускайте слабые градиенты, это нужно чтобы игнорировать артефакты сжатия в jpeg (например в line01.jpg пиксели не идеально белые/черные, есть небольшие отклонения)
+            if (strength <
+                10) // пропускайте слабые градиенты, это нужно чтобы игнорировать артефакты сжатия в jpeg (например в line01.jpg пиксели не идеально белые/черные, есть небольшие отклонения)
                 continue;
+            float theta = atan2(dx, dy);
 
             // TODO рассчитайте в какую корзину нужно внести голос
-            int bin = -1;
-
+            int bin = (theta + M_PI) / (2 * M_PI) * 8;//саша прости я какую-то дичь написала;
+            if (bin == 8) {
+                bin = 0;
+            }
             rassert(bin >= 0, 3842934728039);
             rassert(bin < NBINS, 34729357289040);
             hog[bin] += strength;
@@ -75,11 +80,16 @@ HoG buildHoG(cv::Mat originalImg) {
 // HoG[22.5=0%, 67.5=78%, 112.5=21%, 157.5=0%, 202.5=0%, 247.5=0%, 292.5=0%, 337.5=0%]
 std::ostream &operator<<(std::ostream &os, const HoG &hog) {
     rassert(hog.size() == NBINS, 234728497230016);
-
+    double fullStrength = 0;
+    for (int bin = 0; bin < NBINS; bin++) {
+        fullStrength += hog[bin];
+    }
     // TODO
     os << "HoG[";
     for (int bin = 0; bin < NBINS; ++bin) {
-//        os << angleInDegrees << "=" << percentage << "%, ";
+        double angleInDegrees = bin * 45 + 22.5;
+        int percentage = hog[bin] / fullStrength * 100;
+        os << angleInDegrees << "=" << percentage << "%, ";
     }
     os << "]";
     return os;
@@ -93,11 +103,21 @@ double pow2(double x) {
 double distance(HoG a, HoG b) {
     rassert(a.size() == NBINS, 237281947230077);
     rassert(b.size() == NBINS, 237281947230078);
-
+    double fullStrengthA = 0;
+    double fullStrengthB = 0;
+    double res = 0.0;
+    for (int bin = 0; bin < NBINS; bin++) {
+        fullStrengthA += a[bin];
+        fullStrengthB += b[bin];
+    }
+    for (int bin = 0; bin < NBINS; ++bin) {
+        int percentageA = a[bin] / fullStrengthA * 100;
+        int percentageB = b[bin] / fullStrengthB * 100;
+        res = sqrt(pow(res, 2) + pow(percentageA - percentageB, 2));
+    }
     // TODO рассчитайте декартово расстояние (т.е. корень из суммы квадратов разностей)
     // подумайте - как можно добавить независимость (инвариантность) гистаграммы градиентов к тому насколько контрастная или блеклая картинка?
     // подсказка: на контрастной картинке все градиенты гораздо сильнее, а на блеклой картинке все градиенты гораздо слабее, но пропорции между градиентами (распроцентовка) не изменны!
 
-    double res = 0.0;
     return res;
 }

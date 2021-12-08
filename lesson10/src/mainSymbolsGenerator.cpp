@@ -13,24 +13,24 @@
 
 int randFont() {
     int fonts[] = {
-//            cv::FONT_HERSHEY_SIMPLEX,
-//            cv::FONT_HERSHEY_PLAIN,
-//            cv::FONT_HERSHEY_DUPLEX,
-//            cv::FONT_HERSHEY_COMPLEX,
-//            cv::FONT_HERSHEY_TRIPLEX,
+            cv::FONT_HERSHEY_SIMPLEX,
+            cv::FONT_HERSHEY_PLAIN,
+            cv::FONT_HERSHEY_DUPLEX,
+            cv::FONT_HERSHEY_COMPLEX,
+            cv::FONT_HERSHEY_TRIPLEX,
             cv::FONT_HERSHEY_COMPLEX_SMALL,
-//            cv::FONT_HERSHEY_SCRIPT_SIMPLEX,
-//            cv::FONT_HERSHEY_SCRIPT_COMPLEX,
+            cv::FONT_HERSHEY_SCRIPT_SIMPLEX,
+            cv::FONT_HERSHEY_SCRIPT_COMPLEX,
     };
     // Выбираем случайный шрифт из тех что есть в OpenCV
     int nfonts = (sizeof(fonts) / sizeof(int));
     int font = rand() % nfonts;
 
-    // С вероятностью 20% делаем шрифт наклонным (italic)
-//    bool is_italic = ((rand() % 5) == 0);
-//    if  (is_italic) {
-//        font = font | cv::FONT_ITALIC;
-//    }
+//     С вероятностью 20% делаем шрифт наклонным (italic)
+    bool is_italic = ((rand() % 5) == 0);
+    if  (is_italic) {
+        font = font | cv::FONT_ITALIC;
+    }
 
     return font;
 }
@@ -103,28 +103,28 @@ void generateAllLetters() {
 
 
 void experiment1() {
-    // TODO Проведите эксперимент 1:
-    // Пробежав в цикле по каждой букве - посчитайте насколько сильно она отличается между своими пятью примерами? (NSAMPLES_PER_LETTER)
-    // Для каждой буквы выведите:
-    // 1) Среднее попарное расстояние (среднюю похожесть) между всеми примерами этой буквы
-    // 2) Максимальное попарное расстояние между примерами этой буквы
-    //
-    // А так же среди всех максимальных расстояний найдите максимальное и выведите его в конце
 
     std::cout << "________Experiment 1________" << std::endl;
+    double maxMax = 0;
     for (char letter = 'a'; letter <= 'z'; ++letter) {
         std::string letterDir = LETTER_DIR_PATH + "/" + letter;
-
+        double distMax = 0, distSum = 0, distN = 0;
         for (int sampleA = 1; sampleA <= NSAMPLES_PER_LETTER; ++sampleA) {
             for (int sampleB = sampleA + 1; sampleB <= NSAMPLES_PER_LETTER; ++sampleB) {
                 cv::Mat a = cv::imread(letterDir + "/" + std::to_string(sampleA) + ".png");
                 cv::Mat b = cv::imread(letterDir + "/" + std::to_string(sampleB) + ".png");
                 HoG hogA = buildHoG(a);
-                // TODO
+                HoG hogB = buildHoG(b);
+                double dist = distance(hogA, hogB);
+                distMax = std::max(distMax, dist);
+                distSum += dist;
+                distN++;
             }
         }
-//        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
+        maxMax = std::max(maxMax, distMax);
+        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
     }
+    std::cout << "Max = " << maxMax << std::endl;
 }
 
 void experiment2() {
@@ -137,17 +137,36 @@ void experiment2() {
     //  - Можно ли с этим что-то сделать?
 
     std::cout << "________Experiment 2________" << std::endl;
+    double sum = 0, count = 0;
     for (char letterA = 'a'; letterA <= 'z'; ++letterA) {
-        std::string letterDirA = LETTER_DIR_PATH + "/" + letterA;
-
+        std::string letterDir = LETTER_DIR_PATH + "/" + letterA;
+        char letterMin = 'a';
+        double distMin = DBL_MAX;
+        char letterMax = 'a';
+        double distMax = 0;
         for (char letterB = 'a'; letterB <= 'z'; ++letterB) {
             if (letterA == letterB) continue;
 
-            // TODO
-        }
+            cv::Mat a = cv::imread(LETTER_DIR_PATH + "/" + letterA + "/1.png");
+            cv::Mat b = cv::imread(LETTER_DIR_PATH + "/" + letterB + "/1.png");
+            HoG hogA = buildHoG(a);
+            HoG hogB = buildHoG(b);
 
-//        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
+            double d = distance(hogA, hogB);
+            if(d < distMin){
+                distMin = d;
+                letterMin = letterB;
+            }
+            if(d > distMax){
+                distMax = d;
+                letterMax = letterB;
+            }
+        }
+        sum += distMin;
+        count++;
+        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
     }
+    std::cout << "Average=" << (sum/count) << std::endl;
 }
 
 
@@ -159,10 +178,8 @@ int main() {
 
         std::cout << "Images with letters were generated!" << std::endl;
 
-        // TODO:
         experiment1();
 
-        // TODO:
         experiment2();
 
     } catch (const std::exception &e) {
@@ -170,4 +187,3 @@ int main() {
         return 1;
     }
 }
-
