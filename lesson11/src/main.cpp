@@ -183,7 +183,6 @@ std::string detect(const cv::Mat& a) {
     for (char letterB = 'a'; letterB <= 'z'; ++letterB) {
         for(int i = 1; i <= NSAMPLES_PER_LETTER; i++){
             cv::Mat b = cv::imread(LETTER_DIR_PATH + "/" + letterB + "/" + std::to_string(i) + ".png");
-
             HoG hogB = buildHoG(b);
             double d = distance(hogA, hogB);
             if (d <= distMin) {
@@ -197,22 +196,26 @@ std::string detect(const cv::Mat& a) {
 
 void finalExperiment(std::string name, std::string k) {
     cv::Mat original = cv::imread("lesson11/data/" + name + "/" + k + ".png");
-    std::vector<cv::Mat> vect = splitSymbols(original);
-    int i = 0;
-    for(const cv::Mat& m : vect) {
-        std::cout << i << " " << detect(m) << "\n";
-        cv::imwrite(LETTER_DIR_PATH + "/res/" + std::to_string(i++) + ".png", m);
-
+    auto x = splitSymbols(original);
+    std::vector<std::vector<std::pair<cv::Point, cv::Mat>>> vect = sort(x);
+    int j = 0;
+    for(std::vector<std::pair<cv::Point_<int>, cv::Mat>> ms : vect) {
+        int i = 0;
+        for(std::pair<cv::Point_<int>, cv::Mat> m : ms) {
+            std::cout << detect(m.second) << " ";
+            cv::imwrite(LETTER_DIR_PATH + "/res/" + std::to_string(j) + "-" + std::to_string(i) + ".png", m.second);
+            i++;
+        }
+        j++;
     }
-
 }
 
 
 
 int main() {
     try {
-        finalExperiment("alphabet", "3_gradient");
-//
+        finalExperiment("text", "1");
+
 //        std::vector<std::string> names;
 //        names.emplace_back("alphabet");
 //        names.emplace_back("line");
@@ -224,6 +227,8 @@ int main() {
 //        }
 //
 //        test("alphabet", "3_gradient");
+
+
 
         return 0;
     } catch (const std::exception &e) {
