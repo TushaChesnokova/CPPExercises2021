@@ -51,7 +51,6 @@ void run() {
 
         edges_by_vertex[bi].push_back(Edge(bi, ai, w)); // а тут - обратное ребро, можно конструировать объект прямо в той же строчке где он и потребовался
     }
-
     const int start = 0;
     const int finish = nvertices - 1;
 
@@ -59,20 +58,39 @@ void run() {
 
     std::vector<int> distances(nvertices, INF);
     // TODO ...
-
-//    while (true) {
-//
-//    }
-
-//    if (...) {
-//        ...
-//        for (...) {
-//            std::cout << (path[i] + 1) << " ";
-//        }
-//        std::cout << std::endl;
-//    } else {
-//        std::cout << -1 << std::endl;
-//    }
+    std::vector <bool> grizly(nvertices, false);
+    std::vector <int> panda(nvertices,start);
+    distances[start]=0;
+    while (true) {
+        int minv = INF;
+        for(int i=0; i<nvertices; i++){
+            if ((minv==INF||distances[i]<distances[minv]) && distances[i] != INF &&!grizly[i]) minv=i;
+        }
+        if (minv==INF) break;
+        for (int i=0; i<edges_by_vertex[minv].size(); i++){
+            Edge a = edges_by_vertex[minv][i];
+            if (distances[a.v]>distances[a.u]+a.w) {
+                distances[a.v]=distances[a.u]+a.w;
+                panda[a.v]=a.u;
+            }
+        }
+        grizly[minv]=true;
+    }
+    std::vector <int> path;
+    if (distances[finish]!=INF) {
+        int i = finish;
+        while(i!=start){
+            path.emplace_back(i);
+            i=panda[i];
+        }
+        path.emplace_back(start);
+        for (i=path.size()-1; i>-1; i=i-1) {
+            std::cout << (path[i] + 1) << " ";
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << -1 << std::endl;
+    }
 }
 
 int main() {

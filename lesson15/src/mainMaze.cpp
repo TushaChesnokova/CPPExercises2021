@@ -30,8 +30,8 @@ int encodeVertex(int row, int column, int nrows, int ncolumns) {
 cv::Point2i decodeVertex(int vertexId, int nrows, int ncolumns) {
 
     // TODO: придумайте как найти номер строки и столбика пикселю по номеру вершины (просто поймите предыдущую функцию и эта функция не будет казаться сложной)
-    int row = -1;
-    int column = -1;
+    int column = vertexId%ncolumns;
+    int row = vertexId/ncolumns;
 
     // сверим что функция симметрично сработала:
     rassert(encodeVertex(row, column, nrows, ncolumns) == vertexId, 34782974923035);
@@ -40,6 +40,9 @@ cv::Point2i decodeVertex(int vertexId, int nrows, int ncolumns) {
     rassert(column < ncolumns, 3824598237592030);
     return cv::Point2i(column, row);
 }
+int distance(unsigned char r1, unsigned char g1, unsigned char b1, unsigned char r2, unsigned char g2, unsigned char b2){
+    return round(sqrt(pow(r2-r1,2)+pow(g2-g1,2)+pow(b2-b1,2)));
+}
 
 void run(int mazeNumber) {
     cv::Mat maze = cv::imread("lesson15/data/mazesImages/maze" + std::to_string(mazeNumber) + ".png");
@@ -47,17 +50,37 @@ void run(int mazeNumber) {
     rassert(maze.type() == CV_8UC3, 3447928472389020);
     std::cout << "Maze resolution: " << maze.cols << "x" << maze.rows << std::endl;
 
-    int nvertices = 0; // TODO
+    int nvertices = maze.cols*maze.rows; // TODO
 
     std::vector<std::vector<Edge>> edges_by_vertex(nvertices);
-    for (int j = 0; j < maze.rows; ++j) {
-        for (int i = 0; i < maze.cols; ++i) {
-            cv::Vec3b color = maze.at<cv::Vec3b>(j, i);
+    for (int i = 0; i < maze.rows; ++i) {
+        for (int j = 0; j < maze.cols; ++j) {
+            cv::Vec3b color = maze.at<cv::Vec3b>(i,j);
             unsigned char blue = color[0];
             unsigned char green = color[1];
             unsigned char red = color[2];
 
-            // TODO добавьте соотвтетсвующие этому пикселю ребра
+            auto ai = encodeVertex(i,j,maze.rows,maze.cols);
+            if(i > 0) {
+                cv::Vec3b color2 = maze.at<cv::Vec3b>(i-1,j);
+                edges_by_vertex[ai].emplace_back(ai, encodeVertex(i-1,j, maze.rows, maze.cols),
+                                                 distance(color2[0], color2[1], color2[2], red, green, blue)+1);
+            }
+            if(i < maze.rows-1) {
+                cv::Vec3b color2 = maze.at<cv::Vec3b>(i+1,j);
+                edges_by_vertex[ai].emplace_back(ai, encodeVertex(i+1,j, maze.rows, maze.cols),
+                                                 distance(color2[0], color2[1], color2[2], red, green, blue)+1);
+            }
+            if(j > 0) {
+                cv::Vec3b color2 = maze.at<cv::Vec3b>(i,j-1);
+                edges_by_vertex[ai].emplace_back(ai, encodeVertex(i,j-1, maze.rows, maze.cols),
+                                                 distance(color2[0], color2[1], color2[2], red, green, blue)+1);
+            }
+            if(j < maze.cols-1) {
+                cv::Vec3b color2 = maze.at<cv::Vec3b>(i,j+1);
+                edges_by_vertex[ai].emplace_back(ai, encodeVertex(i,j+1, maze.rows, maze.cols),
+                                                 distance(color2[0], color2[1], color2[2], red, green, blue)+1);
+            }
         }
     }
 
@@ -80,18 +103,42 @@ void run(int mazeNumber) {
     cv::Mat window = maze.clone(); // на этой картинке будем визуализировать до куда сейчас дошла прокладка маршрута
 
     std::vector<int> distances(nvertices, INF);
-    // TODO СКОПИРУЙТЕ СЮДА ДЕЙКСТРУ ИЗ ПРЕДЫДУЩЕГО ИСХОДНИКА
+    std::vector <bool> grizly(nvertices, false);
+    std::vector <int> panda(nvertices,start);
+    distances[start]=0;
+    while (true) {
+        int minv = INF;
+        for(int i=0; i<nvertices; i++){
+            if ((minv==INF||distances[i]<distances[minv])&&!grizly[i]) minv=i;
+        }
+        if (minv==INF) break;
+        for (int i=0; i<edges_by_vertex[minv].size(); i++){
+            Edge a = edges_by_vertex[minv][i];
+            if (distances[a.v]>distances[a.u]+a.w) {
+                distances[a.v]=distances[a.u]+a.w;
+                panda[a.v]=a.u;
+            }
+        }
+        grizly[minv]=true;
+    }
+    std::vector <int> path;
 
-    // TODO в момент когда вершина становится обработанной - красьте ее на картинке window в зеленый цвет и показывайте картинку:
-    //    cv::Point2i p = decodeVertex(the_chosen_one, maze.rows, maze.cols);
-    //    window.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(0, 255, 0);
-    //    cv::imshow("Maze", window);
-    //    cv::waitKey(1);
-    // TODO это может тормозить, в таком случае показывайте window только после обработки каждой сотой вершины
-
-    // TODO обозначьте найденный маршрут красными пикселями
-
-    // TODO сохраните картинку window на диск
+    if (distances[finish] != INF) {
+        std::vector<int> path;
+        for (int i = finish; panda[i] != i; i = panda[i]) {
+            path.emplace_back(i);
+        }
+        path.emplace_back(start);
+        for(auto it = path.rbegin(); it != path.rend(); it++) {
+            cv::Point2i p = decodeVertex(*it, maze.rows, maze.cols);
+            window.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(0, 255, 0);
+            cv::imshow("Maze", window);
+            cv::waitKey(1);
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << -1 << std::endl;
+    }
 
     std::cout << "Finished!" << std::endl;
 
